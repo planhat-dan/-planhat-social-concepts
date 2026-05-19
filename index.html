@@ -631,6 +631,29 @@
       margin-right: auto;
     }
     .review-popover .rp-btn.danger:hover { background: #FCEEEE; }
+    .review-popover .rp-thread {
+      max-height: 240px;
+      overflow-y: auto;
+      margin-bottom: 8px;
+    }
+    .review-popover .rp-comment.rp-reply {
+      padding-left: 12px;
+      border-left: 2px solid #E8E8EB;
+      margin-top: 4px;
+    }
+    .review-popover .rp-reply-form {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid #E8E8EB;
+    }
+    .review-popover .rp-reply-form textarea { min-height: 44px; }
+    .review-popover .rp-reply-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
+    .review-pin.dragging { cursor: grabbing; opacity: 0.85; }
+    body.review-on .review-pin { cursor: grab; }
     .review-popover .rp-comment {
       padding: 8px 0;
       border-bottom: 1px solid #E8E8EB;
@@ -695,7 +718,15 @@
         if (!r.ok) throw new Error('GET failed');
         const data = await r.json();
         state.comments = Array.isArray(data) ? data : (data.comments || []);
-        render();
+        // Polling-safe render: only refresh toolbar + pins. Never touch popovers
+        // (would destroy a textarea the user is typing in).
+        renderToolbar();
+        renderPins();
+        // If the open thread refers to a comment that was deleted remotely, close it.
+        if (state.openId && !state.comments.some(c => c.id === state.openId)) {
+          state.openId = null;
+          document.querySelectorAll('.review-popover').forEach(n => n.remove());
+        }
       } catch (e) {
         console.warn('[review] fetch error', e);
       }
@@ -731,9 +762,21 @@
       return r.json();
     }
 
-    function render() {
-      document.querySelectorAll('.review-pin, .review-popover').forEach(n => n.remove());
+    async function replyComment(parentId, author, text) {
+      const r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentId, author, text })
+      });
+      if (!r.ok) {
+        let msg = 'Reply POST failed: ' + r.status;
+        try { const j = await r.json(); if (j.error) msg = j.error; } catch {}
+        throw new Error(msg);
+      }
+      return r.json();
+    }
 
+    function renderToolbar() {
       const open = state.comments.filter(c => !c.resolved).length;
       const resolved = state.comments.length - open;
       $status.textContent = `${open} open · ${resolved} resolved`;
@@ -741,20 +784,20 @@
       $mode.classList.toggle('off', state.mode);
       document.body.classList.toggle('review-on', state.mode);
       $toggle.textContent = state.visible ? 'Hide' : 'Show';
+    }
 
+    function renderPins() {
+      document.querySelectorAll('.review-pin').forEach(n => n.remove());
       if (!state.visible) return;
-
       const { w, h } = docSize();
       state.comments.forEach((c, i) => {
         const pin = document.createElement('div');
         pin.className = 'review-pin' + (c.resolved ? ' resolved' : '');
         pin.style.left = (c.x * w / 100) + 'px';
         pin.style.top  = (c.y * h / 100) + 'px';
+        pin.dataset.id = c.id;
         pin.innerHTML = `<div class="pin-shape"><span class="pin-num">${i + 1}</span></div>`;
-        pin.addEventListener('click', (e) => {
-          e.stopPropagation();
-          openThread(c, i + 1);
-        });
+        attachPinPointer(pin, c, i + 1);
         document.body.appendChild(pin);
       });
 
@@ -765,12 +808,88 @@
         pin.style.top  = (state.draft.y * h / 100) + 'px';
         pin.innerHTML = `<div class="pin-shape"><span class="pin-num">+</span></div>`;
         document.body.appendChild(pin);
+      }
+    }
+
+    function render() {
+      renderToolbar();
+      renderPins();
+      // Sync popover to state
+      if (state.draft) {
         openDraft();
       } else if (state.openId) {
         const idx = state.comments.findIndex(x => x.id === state.openId);
         const c = state.comments[idx];
         if (c) openThread(c, idx + 1);
+        else document.querySelectorAll('.review-popover').forEach(n => n.remove());
+      } else {
+        document.querySelectorAll('.review-popover').forEach(n => n.remove());
       }
+    }
+
+    // Pin pointer handling: distinguish click-to-open from drag-to-move.
+    // Drag only enabled in review mode.
+    const DRAG_THRESHOLD = 5;
+    function attachPinPointer(pin, comment, number) {
+      pin.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        const startX = e.clientX, startY = e.clientY;
+        const startLeft = parseFloat(pin.style.left) || 0;
+        const startTop  = parseFloat(pin.style.top)  || 0;
+        let dragging = false;
+        try { pin.setPointerCapture(e.pointerId); } catch {}
+
+        const onMove = (ev) => {
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD && state.mode) {
+            dragging = true;
+            pin.classList.add('dragging');
+            // close any open popover during drag
+            if (state.openId === comment.id) {
+              document.querySelectorAll('.review-popover').forEach(n => n.remove());
+            }
+          }
+          if (dragging) {
+            pin.style.left = (startLeft + dx) + 'px';
+            pin.style.top  = (startTop  + dy) + 'px';
+          }
+        };
+
+        const onUp = async (ev) => {
+          pin.removeEventListener('pointermove', onMove);
+          pin.removeEventListener('pointerup', onUp);
+          pin.removeEventListener('pointercancel', onUp);
+          pin.classList.remove('dragging');
+          try { pin.releasePointerCapture(e.pointerId); } catch {}
+
+          if (dragging) {
+            const { w, h } = docSize();
+            const newLeft = parseFloat(pin.style.left);
+            const newTop  = parseFloat(pin.style.top);
+            const xPct = Math.max(0, Math.min(100, (newLeft / w) * 100));
+            const yPct = Math.max(0, Math.min(100, (newTop  / h) * 100));
+            // optimistic update
+            const idx = state.comments.findIndex(c => c.id === comment.id);
+            if (idx >= 0) state.comments[idx] = { ...state.comments[idx], x: xPct, y: yPct };
+            try {
+              await patchComment(comment.id, { x: xPct, y: yPct });
+            } catch (err) {
+              console.warn('[review] move failed', err);
+              alert('Failed to save new position: ' + err.message);
+              await fetchComments();
+            }
+          } else {
+            // treat as click → open thread
+            openThread(comment, number);
+          }
+        };
+
+        pin.addEventListener('pointermove', onMove);
+        pin.addEventListener('pointerup', onUp);
+        pin.addEventListener('pointercancel', onUp);
+      });
     }
 
     function popoverPosition(xPct, yPct) {
@@ -853,24 +972,54 @@
     }
 
     function openThread(comment, number) {
+      // If a popover for this exact comment is already open, leave it
+      // alone — don't tear down the user's in-progress reply textarea.
+      const existing = document.querySelector('.review-popover[data-thread-id]');
+      if (existing && existing.dataset.threadId === comment.id) {
+        state.openId = comment.id;
+        return;
+      }
       state.openId = comment.id;
       document.querySelectorAll('.review-popover').forEach(n => n.remove());
       const { left, top } = popoverPosition(comment.x, comment.y);
       const pop = document.createElement('div');
       pop.className = 'review-popover';
+      pop.dataset.threadId = comment.id;
       pop.style.left = left + 'px';
       pop.style.top  = top + 'px';
+
+      const replies = Array.isArray(comment.replies) ? comment.replies : [];
+      const repliesHtml = replies.map(r => `
+        <div class="rp-comment rp-reply">
+          <div class="rp-meta">
+            <span class="rp-author">${escapeHtml(r.author)}</span>
+            <span>${fmtDate(r.created_at)}</span>
+          </div>
+          <div class="rp-text">${escapeHtml(r.text)}</div>
+        </div>
+      `).join('');
+
       pop.innerHTML = `
         <div class="rp-header">
           <div class="rp-title">#${number} · ${comment.resolved ? 'Resolved' : 'Open'}</div>
           <button class="rp-close" data-action="close">×</button>
         </div>
-        <div class="rp-comment">
-          <div class="rp-meta">
-            <span class="rp-author">${escapeHtml(comment.author)}</span>
-            <span>${fmtDate(comment.created_at || comment.timestamp)}</span>
+        <div class="rp-thread">
+          <div class="rp-comment">
+            <div class="rp-meta">
+              <span class="rp-author">${escapeHtml(comment.author)}</span>
+              <span>${fmtDate(comment.created_at || comment.timestamp)}</span>
+            </div>
+            <div class="rp-text">${escapeHtml(comment.text)}</div>
           </div>
-          <div class="rp-text">${escapeHtml(comment.text)}</div>
+          ${repliesHtml}
+        </div>
+        <div class="rp-reply-form">
+          <input type="text" name="r-author" placeholder="Your name" value="${escapeAttr(getAuthor())}" />
+          <textarea name="r-text" placeholder="Reply…"></textarea>
+          <div class="rp-reply-actions">
+            <button class="rp-btn secondary" data-action="reply" disabled>Reply</button>
+          </div>
         </div>
         <div class="rp-actions">
           <button class="rp-btn danger" data-action="delete" title="Delete comment">Delete</button>
@@ -880,14 +1029,29 @@
         </div>
       `;
       pop.addEventListener('click', (e) => e.stopPropagation());
+      pop.addEventListener('pointerdown', (e) => e.stopPropagation());
       document.body.appendChild(pop);
+
+      const $rAuthor = pop.querySelector('[name=r-author]');
+      const $rText   = pop.querySelector('[name=r-text]');
+      const $rBtn    = pop.querySelector('[data-action=reply]');
+      const updateReplyBtn = () => {
+        $rBtn.disabled = !$rAuthor.value.trim() || !$rText.value.trim();
+      };
+      $rAuthor.addEventListener('input', updateReplyBtn);
+      $rText.addEventListener('input', updateReplyBtn);
+      $rText.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !$rBtn.disabled) {
+          $rBtn.click();
+        }
+      });
 
       pop.querySelector('[data-action=close]').addEventListener('click', () => {
         state.openId = null;
         render();
       });
       pop.querySelector('[data-action=delete]').addEventListener('click', async (e) => {
-        if (!confirm('Delete this comment?')) return;
+        if (!confirm('Delete this comment and all replies?')) return;
         const btn = e.currentTarget;
         btn.disabled = true;
         try {
@@ -911,6 +1075,22 @@
         } catch (err) {
           btn.disabled = false;
           alert('Failed to update: ' + err.message);
+        }
+      });
+      $rBtn.addEventListener('click', async () => {
+        const author = $rAuthor.value.trim();
+        const text   = $rText.value.trim();
+        if (!author || !text) return;
+        setAuthor(author);
+        $rBtn.disabled = true;
+        try {
+          const updated = await replyComment(comment.id, author, text);
+          const idx = state.comments.findIndex(c => c.id === comment.id);
+          if (idx >= 0) state.comments[idx] = { ...state.comments[idx], ...updated };
+          render();
+        } catch (err) {
+          $rBtn.disabled = false;
+          alert('Failed to reply: ' + err.message);
         }
       });
     }

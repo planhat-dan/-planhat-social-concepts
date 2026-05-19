@@ -9,8 +9,13 @@ create table if not exists public.comments (
   author      text    not null,
   text        text    not null,
   resolved    boolean not null default false,
+  replies     jsonb   not null default '[]'::jsonb,
   created_at  timestamptz not null default now()
 );
+
+-- Migration: add `replies` column to existing installs
+alter table public.comments
+  add column if not exists replies jsonb not null default '[]'::jsonb;
 
 create index if not exists comments_created_at_idx
   on public.comments (created_at);

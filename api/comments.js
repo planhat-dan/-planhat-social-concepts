@@ -144,7 +144,43 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = await readJsonBody(req);
-      const { x, y, author, text } = body || {};
+      const { parentId, author, text } = body || {};
+
+      // Reply path — append to parent.replies
+      if (parentId) {
+        if (typeof author !== 'string' || typeof text !== 'string' || !author.trim() || !text.trim()) {
+          return sendError(res, 400, 'Reply requires non-empty author and text.');
+        }
+        const { data: parent, error: fetchErr } = await sb
+          .from('comments').select('*').eq('id', parentId).single();
+        if (fetchErr) {
+          console.error('[api/comments] reply parent fetch error:', fetchErr);
+          return sendError(res, 404, 'Parent comment not found', { supabase: fetchErr });
+        }
+        const reply = {
+          author: author.trim().slice(0, 80),
+          text:   text.trim().slice(0, 2000),
+          created_at: new Date().toISOString()
+        };
+        const nextReplies = Array.isArray(parent.replies) ? [...parent.replies, reply] : [reply];
+        const { data: updated, error: updErr } = await sb
+          .from('comments').update({ replies: nextReplies })
+          .eq('id', parentId).select().single();
+        if (updErr) {
+          console.error('[api/comments] reply update error:', updErr);
+          return sendError(res, 500, updErr.message, { stage: 'reply', supabase: updErr });
+        }
+        notifySlack({
+          author: reply.author,
+          text: `↪︎ reply on thread #${parentId.slice(0,8)}\n${reply.text}`,
+          url: pageUrl(req, parentId),
+          x: parent.x, y: parent.y
+        });
+        return res.status(200).json(updated);
+      }
+
+      // Top-level comment path
+      const { x, y } = body || {};
       if (
         typeof x !== 'number' || typeof y !== 'number' ||
         typeof author !== 'string' || typeof text !== 'string' ||
@@ -173,11 +209,17 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'PATCH') {
       const body = await readJsonBody(req);
-      const { id, resolved } = body || {};
+      const { id, resolved, x, y } = body || {};
       if (!id) return sendError(res, 400, 'Missing id');
-      if (typeof resolved !== 'boolean') return sendError(res, 400, 'resolved must be a boolean');
+      const patch = {};
+      if (typeof resolved === 'boolean') patch.resolved = resolved;
+      if (typeof x === 'number') patch.x = Math.max(0, Math.min(100, x));
+      if (typeof y === 'number') patch.y = Math.max(0, Math.min(100, y));
+      if (Object.keys(patch).length === 0) {
+        return sendError(res, 400, 'No updatable fields supplied (resolved, x, y).');
+      }
       const { data, error } = await sb
-        .from('comments').update({ resolved }).eq('id', id).select().single();
+        .from('comments').update(patch).eq('id', id).select().single();
       if (error) {
         console.error('[api/comments] PATCH supabase error:', error);
         return sendError(res, 500, error.message, { stage: 'update', supabase: error });
