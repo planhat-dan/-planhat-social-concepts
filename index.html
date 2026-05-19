@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planhat — Social Concepts 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-bg:           #0E1312;
+      --color-surface:      #464649;
+      --color-border:       #CFCFD3;
+      --color-subtle:       #E8E8EB;
+      --color-fg:           #FCFCFD;
+      --color-fg-2:         #B8B8BC;
+      --color-fg-3:         #7A7A7E;
+      --color-accent:       #F36A35;
+      --color-accent-muted: #FFEAE0;
+
+      --text-xs:   11px;
+      --text-sm:   13px;
+      --text-base: 15px;
+      --text-md:   18px;
+      --text-lg:   24px;
+      --text-xl:   32px;
+      --text-2xl:  48px;
+
+      --leading-body:    1.5;
+      --leading-heading: 1.2;
+      --tracking-medium: -0.01em;
+    }
+
+    html.light {
+      --color-bg:           #FCFCFD;
+      --color-surface:      #E8E8EB;
+      --color-border:       #464649;
+      --color-subtle:       #CFCFD3;
+      --color-fg:           #0E1312;
+      --color-fg-2:         #5C5C60;
+      --color-fg-3:         #2E2E31;
+      --color-accent:       #F36A35;
+      --color-accent-muted: #FFEAE0;
+    }
+
+    html {
+      background: var(--color-bg);
+      transition: background 0.3s;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: var(--text-base);
+      font-weight: 400;
+      line-height: var(--leading-body);
+      color: var(--color-fg);
+      background: var(--color-bg);
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      padding: 60px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* MODE TOGGLE */
+    .mode-toggle {
+      position: fixed;
+      top: 24px; right: 24px;
+      width: 32px; height: 32px;
+      border: 1px solid var(--color-surface);
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      border-radius: 2px;
+      padding: 0;
+    }
+    .mode-toggle svg { width: 14px; height: 14px; fill: none; stroke: var(--color-fg-3); stroke-width: 2; stroke-linecap: round; }
+    .mode-toggle .icon-sun  { display: block; }
+    .mode-toggle .icon-moon { display: none; }
+    html.light .mode-toggle .icon-sun  { display: none; }
+    html.light .mode-toggle .icon-moon { display: block; }
+
+    /* LOGO */
+    .logo-dark  { display: block; }
+    .logo-light { display: none; }
+    html.light .logo-dark  { display: none; }
+    html.light .logo-light { display: block; }
+    .logo-light path, .logo-light rect { fill: #0E1312; }
+
+    /* HEADER */
+    .page-header {
+      margin-bottom: 80px;
+      border-bottom: 1px solid var(--color-surface);
+      padding-bottom: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      opacity: 0;
+    }
+    .page-header-label {
+      font-size: var(--text-xs);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-fg-3);
+    }
+
+    /* CARDS */
+    .card {
+      border: 1px solid var(--color-surface);
+      padding: 56px 60px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 2px;
+      opacity: 0;
+      background: transparent;
+    }
+
+    .card-number {
+      font-size: var(--text-xs);
+      color: var(--color-fg-3);
+      letter-spacing: 0.1em;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .card-number::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--color-surface);
+      max-width: 60px;
+    }
+
+    .card-headline {
+      font-size: clamp(22px, 3vw, var(--text-xl));
+      font-weight: 500;
+      line-height: var(--leading-heading);
+      letter-spacing: var(--tracking-medium);
+      margin-bottom: 20px;
+      color: var(--color-fg);
+    }
+    .card-headline em {
+      font-style: normal;
+      font-weight: 400;
+      color: var(--color-fg-2);
+    }
+
+    .card-sub {
+      font-size: var(--text-sm);
+      color: var(--color-fg-3);
+      line-height: var(--leading-body);
+      max-width: 520px;
+      margin-bottom: 40px;
+    }
+
+    .card-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      font-size: var(--text-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border: 1px solid var(--color-surface);
+      color: var(--color-fg-3);
+      border-radius: 2px;
+    }
+    .tag.highlight { border-color: var(--color-accent); color: var(--color-accent); }
+
+    .card-inner {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 60px;
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .card-inner { grid-template-columns: 1fr; }
+      .card-visual, .motion-badge { display: none; }
+    }
+
+    .card-visual { position: relative; height: 200px; }
+
+    .motion-badge {
+      position: absolute;
+      top: 56px; right: 60px;
+      font-size: var(--text-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-fg-3);
+    }
+
+    /* ── CARD 1 ── */
+    .visual-dualism { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; height: 100%; }
+    .dual-pane {
+      border: 1px solid var(--color-surface);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+    .dual-pane.lit { border-color: var(--color-border); }
+    .dual-label {
+      font-size: var(--text-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-fg-3);
+      margin-bottom: 8px;
+    }
+    .dual-pane.lit .dual-label { color: var(--color-fg-2); }
+    .cursor-blink {
+      display: inline-block;
+      width: 6px; height: 13px;
+      background: var(--color-surface);
+      animation: blink 1.1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .dashboard-lines { display: flex; flex-direction: column; gap: 5px; }
+    .dash-line {
+      height: 3px;
+      background: var(--color-border);
+      opacity: 0.5;
+      border-radius: 2px;
+      transform: scaleX(0);
+      transform-origin: left;
+    }
+    .dash-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      margin-bottom: 8px;
+    }
+
+    /* ── CARD 2 ── */
+    .visual-log {
+      border: 1px solid var(--color-surface);
+      padding: 16px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+      font-size: var(--text-xs);
+    }
+    .log-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      opacity: 0;
+      padding: 5px 6px;
+    }
+    .log-row.total {
+      border-top: 1px solid var(--color-surface);
+      margin-top: 4px;
+      padding-top: 8px;
+    }
+    .log-icon { color: var(--color-fg-3); flex-shrink: 0; }
+    .log-row.total .log-icon { color: var(--color-accent); }
+    .log-action { color: var(--color-fg-2); }
+    .log-time { color: var(--color-fg-3); margin-left: auto; white-space: nowrap; }
+    .log-saved { color: var(--color-fg-3); margin-top: 1px; }
+    .log-row.total .log-saved { color: var(--color-fg); font-weight: 500; font-size: var(--text-sm); }
+
+    /* ── CARD 3 ── */
+    .visual-flood { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; height: 100%; }
+    .flood-pane {
+      border: 1px solid var(--color-surface);
+      padding: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .flood-label {
+      font-size: var(--text-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-fg-3);
+      margin-bottom: 8px;
+    }
+    .flood-label.good { color: var(--color-accent); }
+    .token-cloud { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; }
+    .token { font-size: 7px; color: var(--color-fg-3); padding: 2px 4px; opacity: 0; }
+    .precision-lines { display: flex; flex-direction: column; gap: 7px; flex: 1; justify-content: center; }
+    .p-line { display: flex; align-items: center; gap: 6px; opacity: 0; }
+    .p-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--color-border); flex-shrink: 0; }
+    .p-bar { height: 3px; background: var(--color-surface); border-radius: 2px; width: 0; }
+
+    /* ── CARD 4 ── */
+    .visual-arch { height: 100%; display: flex; flex-direction: column; gap: 3px; }
+    .arch-pillar {
+      flex: 1;
+      border: 1px solid var(--color-surface);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+    }
+    .arch-n { font-size: var(--text-xs); color: var(--color-fg-3); width: 16px; flex-shrink: 0; }
+    .arch-pillar:first-child .arch-n { color: var(--color-accent); }
+    .arch-name { font-size: var(--text-xs); color: var(--color-fg-2); }
+    .arch-bar { margin-left: auto; height: 2px; background: var(--color-surface); border-radius: 2px; width: 0; }
+
+    /* FOOTER */
+    .page-footer {
+      margin-top: 80px;
+      padding-top: 32px;
+      border-top: 1px solid var(--color-surface);
+      display: flex;
+      justify-content: space-between;
+      opacity: 0;
+    }
+    .page-footer p { font-size: var(--text-xs); color: var(--color-fg-3); letter-spacing: 0.08em; }
+  </style>
+</head>
+<body>
+
+  <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode">
+    <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>
+  </button>
+
+  <header class="page-header">
+    <span class="page-header-label">Social Concepts / 2026</span>
+    <div>
+      <svg class="logo-dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 480" style="height:18px;width:auto;display:block;"><style>.w{fill:#fff}</style><path class="w" d="M285.57,33.97c-17.63-9.45-36.77-15.8-57.39-19.02-20.64-3.22-40.63-4.84-59.99-4.84H5v451.39h66.42v-173.46h96.77c18.92,0,38.58-2.14,59-6.45,20.42-4.29,39.56-11.82,57.39-22.57,17.85-10.74,32.36-25.57,43.53-44.5,11.17-18.91,16.78-42.98,16.78-72.22s-5.5-50.62-16.46-68.03c-10.95-17.41-25.27-30.84-42.88-40.3ZM239.13,221.62c-21.93,15.05-52.65,22.57-92.21,22.57h-75.5V53.32h89.05c33.95,0,61.03,6.78,81.24,20.31,20.21,13.54,30.31,37.51,30.31,71.9s-10.95,61.05-32.88,76.09Z"/><rect class="w" x="399.05" y="10.11" width="60.62" height="451.39"/><path class="w" d="M671.18,130.7c-24.09,0-44.71,3.34-61.9,10-17.2,6.67-31.3,15.26-42.25,25.79-10.95,10.54-19.36,22.46-25.13,35.78-5.8,13.33-9.58,26.87-11.31,40.62h68.37c1.29-21.92,7.5-40.08,18.7-54.49,11.17-14.4,29.21-21.6,54.16-21.6,15.91,0,28.91,3.12,39.02,9.35,10.1,6.24,17.41,14.09,21.93,23.54,4.52,9.46,6.76,19.56,6.76,30.3,0,14.19-3.86,24.61-11.61,31.27-7.72,6.67-21.71,11.07-41.92,13.22l-72.86,7.74c-17.2,1.72-32.47,5.59-45.78,11.61-13.33,6.02-23.87,14.83-31.6,26.44-7.75,11.61-11.61,26.66-11.61,45.14,0,22.79,5.59,41.92,16.76,57.39,11.17,15.48,25.79,27.19,43.86,35.14,18.04,7.95,37.4,11.93,58.02,11.93s40.19-4.09,56.1-12.25c15.91-8.17,29.46-21.28,40.63-39.34l1.29,43.2h59.33v-210.86c0-39.11-10.87-68.89-32.55-89.31-21.71-20.41-53.85-30.63-96.4-30.63ZM740.8,339.63c0,18.92-3.75,35.14-11.28,48.68-7.53,13.55-17.63,23.86-30.31,30.95-12.68,7.1-26.97,10.64-42.88,10.64-22.37,0-38.91-5.59-49.64-16.77-10.76-11.17-16.13-25.15-16.13-41.91s4.52-28.58,13.53-36.76c9.04-8.16,23.66-13.32,43.86-15.48l59.33-6.45c6.43-.85,12.02-1.94,16.76-3.22,4.74-1.29,10.32-2.79,16.76-4.52v34.83Z"/><path class="w" d="M1121.9,191.32c-4.3-14.61-11.39-26.33-21.27-35.14-9.88-8.81-20.86-15.26-32.88-19.35-12.05-4.08-24.5-6.13-37.4-6.13s-26.23,2.16-38.69,6.45c-12.49,4.31-23.85,10.54-34.17,18.7-10.32,8.17-18.92,18.06-25.79,29.67v-46.43h-61.28v322.42h60.62v-169.6c0-14.61.55-27.08,1.62-37.4,1.07-10.32,2.9-19.77,5.48-28.37,4.74-14.61,13.96-27.3,27.74-38.04,13.74-10.74,29.43-16.12,47.06-16.12,13.74,0,24.29,2.16,31.6,6.45,7.31,4.3,12.68,10.32,16.13,18.06,3.42,6.88,5.37,14.83,5.8,23.85.41,9.03.66,18.93.66,29.67v211.51h59.96v-216.02c0-9.88-.33-19.34-.96-28.37-.66-9.03-2.05-17.62-4.22-25.79Z"/><path class="w" d="M1448.18,191.32c-4.3-14.61-11.39-26.33-21.27-35.14-9.88-8.81-20.86-15.26-32.88-19.35-12.05-4.08-24.5-6.13-37.4-6.13s-26.23,2.16-38.69,6.45c-12.49,4.31-23.85,10.54-34.17,18.7-10.32,8.17-18.92,18.06-25.79,29.67V10.11h-61.28v451.39h60.62v-169.6c0-14.61.55-27.08,1.62-37.4,1.07-10.32,2.9-19.77,5.48-28.37,4.74-14.61,13.96-27.3,27.74-38.04,13.74-10.74,29.43-16.12,47.06-16.12,13.74,0,24.29,2.16,31.6,6.45,7.31,4.3,12.68,10.32,16.13,18.06,3.42,6.88,5.37,14.83,5.81,23.85.41,9.03.66,18.93.66,29.67v211.51h59.96v-216.02c0-9.88-.33-19.34-.96-28.37-.66-9.03-2.05-17.62-4.22-25.79Z"/><path class="w" d="M1655.19,130.7c-24.09,0-44.71,3.34-61.9,10-17.19,6.67-31.3,15.26-42.25,25.79-10.95,10.54-19.36,22.46-25.13,35.78-5.8,13.33-9.58,26.87-11.31,40.62h68.37c1.29-21.92,7.5-40.08,18.7-54.49,11.17-14.4,29.21-21.6,54.16-21.6,15.91,0,28.91,3.12,39.02,9.35,10.1,6.24,17.41,14.09,21.93,23.54,4.52,9.46,6.76,19.56,6.76,30.3,0,14.19-3.86,24.61-11.61,31.27-7.72,6.67-21.71,11.07-41.92,13.22l-72.86,7.74c-17.19,1.72-32.47,5.59-45.78,11.61-13.33,6.02-23.87,14.83-31.6,26.44-7.75,11.61-11.61,26.66-11.61,45.14,0,22.79,5.59,41.92,16.76,57.39,11.17,15.48,25.79,27.19,43.86,35.14,18.04,7.95,37.4,11.93,58.02,11.93s40.19-4.09,56.1-12.25c15.91-8.17,29.46-21.28,40.63-39.34l1.29,43.2h59.33v-210.86c0-39.11-10.87-68.89-32.55-89.31-21.71-20.41-53.85-30.63-96.4-30.63ZM1724.82,339.63c0,18.92-3.75,35.14-11.28,48.68-7.53,13.55-17.63,23.86-30.31,30.95-12.68,7.1-26.97,10.64-42.88,10.64-22.37,0-38.91-5.59-49.64-16.77-10.76-11.17-16.13-25.15-16.13-41.91s4.52-28.58,13.53-36.76c9.04-8.16,23.66-13.32,43.86-15.48l59.33-6.45c6.43-.85,12.02-1.94,16.76-3.22,4.74-1.29,10.32-2.79,16.76-4.52v34.83Z"/><path class="w" d="M1995,176.48v-37.4h-67.05V62.99h-60.62v76.09h-54.16v37.4h54.16v223.76c0,12.48,1.83,23.22,5.48,32.25,3.67,9.03,9.69,16.12,18.07,21.28,8.38,5.15,19.66,7.73,33.84,7.73h70.28v-40.62h-44.49c-7.31,0-12.9-1.29-16.76-3.87-3.86-2.58-5.81-8.39-5.81-17.41v-223.12h67.05Z"/></svg>
+      <svg class="logo-light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 480" style="height:18px;width:auto;display:block;"><path d="M291.74,34.85c-17.76-9.41-37.15-15.73-58.11-18.93-20.98-3.22-41.32-4.83-61-4.83H5v449.46h77.68v-170.15h89.95c19.26,0,39.27-2.14,60.03-6.42,20.76-4.28,40.13-11.78,58.11-22.48,17.98-10.7,32.52-25.57,43.66-44.63,11.14-19.04,16.7-43.12,16.7-72.23s-5.45-51.79-16.37-69.34c-10.92-17.54-25.26-31.04-43.02-40.46ZM236.85,219.46c-20.56,14.34-49.24,21.51-86.04,21.51h-68.13V59.89h81.61c31.67,0,56.83,6.53,75.45,19.59,18.62,13.06,27.93,35.85,27.93,68.39s-10.28,57.25-30.82,71.59Z"/><rect x="397.51" y="11.09" width="70.62" height="449.46"/><path d="M673.6,131.17c-25.26,0-46.77,3.44-64.53,10.28-17.76,6.84-32.21,15.73-43.35,26.64-11.14,10.92-19.57,23.12-25.35,36.6-5.78,13.48-9.11,27.09-9.95,40.77h78.33c.86-21.39,6.42-39.05,16.7-52.97,10.28-13.9,26.74-20.87,49.44-20.87,14.12,0,25.68,2.79,34.68,8.36,8.98,5.56,15.73,12.84,20.23,21.82,4.48,9,6.73,18.62,6.73,28.9,0,12.84-3.53,22.7-10.59,29.54-7.06,6.84-20.23,11.14-39.49,12.84l-73.2,7.06c-17.12,1.72-32.43,5.58-45.91,11.56-13.48,6-24.07,14.76-31.77,26.32-7.72,11.56-11.56,26.98-11.56,46.24,0,23.11,5.67,42.38,17.01,57.78,11.34,15.42,26.1,27.07,44.3,34.99,18.18,7.92,37.77,11.89,58.75,11.89s40.02-4.08,54.58-12.2c14.54-8.14,26.96-20.34,37.24-36.6l1.28,40.44h69.34v-207.39c0-40.24-11.45-70.64-34.35-91.18-22.9-20.54-55.75-30.82-98.55-30.82ZM737.16,339.85c0,18.4-3.44,33.82-10.26,46.22-6.86,12.42-16.06,21.73-27.62,27.93-11.56,6.22-24.4,9.31-38.52,9.31-20.13,0-35.22-5.03-45.27-15.09-10.06-10.05-15.09-22.79-15.09-38.19s4.28-26.34,12.84-34.04c8.56-7.7,21.61-12.4,39.16-14.12l57.16-6.42c5.55-.86,10.26-1.7,14.12-2.58,3.86-.85,8.34-1.92,13.48-3.2v30.18Z"/><path d="M1126.91,191.53c-4.28-14.56-11.34-26.21-21.18-34.99-9.86-8.78-20.87-15.2-33.07-19.27-12.2-4.06-24.95-6.09-38.21-6.09s-26.01,2.03-38.21,6.09c-12.2,4.08-23.21,9.95-33.06,17.67-9.86,7.7-18.21,16.92-25.04,27.6v-43.02h-71.28v321.04h70.62v-175.93c0-12.84.53-23.98,1.61-33.4,1.06-9.41,2.89-17.75,5.47-25.04,4.27-13.26,12.51-24.71,24.71-34.35,12.2-9.62,26.43-14.45,42.69-14.45,12.85,0,22.7,2.15,29.54,6.42,6.84,4.29,11.78,9.64,14.78,16.06,3.42,6,5.23,12.84,5.45,20.54.2,7.72.33,16.49.33,26.34v213.81h70.62v-215.1c0-9.84-.44-19.26-1.28-28.24-.86-9-2.36-17.54-4.5-25.68Z"/><path d="M1451.79,191.53c-4.28-14.56-11.34-26.21-21.18-34.99-9.86-8.78-20.87-15.2-33.07-19.27-12.2-4.06-24.95-6.09-38.21-6.09s-26.01,2.03-38.21,6.09c-12.2,4.08-23.21,9.95-33.06,17.67-9.86,7.7-18.21,16.92-25.04,27.6V11.09h-71.28v449.46h70.62v-175.93c0-12.84.53-23.98,1.61-33.4,1.06-9.41,2.89-17.75,5.47-25.04,4.27-13.26,12.51-24.71,24.71-34.35,12.2-9.62,26.43-14.45,42.69-14.45,12.85,0,22.7,2.15,29.54,6.42,6.84,4.29,11.78,9.64,14.78,16.06,3.42,6,5.23,12.84,5.45,20.54.2,7.72.33,16.49.33,26.34v213.81h70.62v-215.1c0-9.84-.44-19.26-1.28-28.24-.86-9-2.36-17.54-4.5-25.68Z"/><path d="M1653.41,131.17c-25.26,0-46.77,3.44-64.53,10.28-17.76,6.84-32.21,15.73-43.35,26.64-11.14,10.92-19.57,23.12-25.35,36.6-5.78,13.48-9.11,27.09-9.95,40.77h78.33c.86-21.39,6.42-39.05,16.7-52.97,10.28-13.9,26.74-20.87,49.44-20.87,14.12,0,25.68,2.79,34.68,8.36,8.98,5.56,15.73,12.84,20.23,21.82,4.48,9,6.73,18.62,6.73,28.9,0,12.84-3.53,22.7-10.59,29.54-7.06,6.84-20.23,11.14-39.49,12.84l-73.2,7.06c-17.12,1.72-32.43,5.58-45.91,11.56-13.48,6-24.07,14.76-31.77,26.32-7.72,11.56-11.56,26.98-11.56,46.24,0,23.11,5.67,42.38,17.01,57.78,11.34,15.42,26.1,27.07,44.3,34.99,18.18,7.92,37.77,11.89,58.75,11.89s40.02-4.08,54.58-12.2c14.54-8.14,26.96-20.34,37.24-36.6l1.28,40.44h69.34v-207.39c0-40.24-11.45-70.64-34.35-91.18-22.9-20.54-55.75-30.82-98.55-30.82ZM1716.98,339.85c0,18.4-3.44,33.82-10.26,46.22-6.86,12.42-16.06,21.73-27.62,27.93-11.56,6.22-24.4,9.31-38.52,9.31-20.13,0-35.22-5.03-45.27-15.09-10.06-10.05-15.09-22.79-15.09-38.19s4.28-26.34,12.84-34.04c8.56-7.7,21.61-12.4,39.16-14.12l57.16-6.42c5.55-.86,10.26-1.7,14.12-2.58,3.86-.85,8.34-1.92,13.48-3.2v30.18Z"/><path d="M1995,182.53v-43.02h-64.86V63.75h-70.62v75.76h-52v43.02h52v209.96c0,14.56,1.92,26.87,5.78,36.93,3.86,10.06,10.59,17.76,20.23,23.11,9.62,5.36,22.57,8.03,38.85,8.03h70.62v-45.58h-42.38c-7.28,0-12.84-1.28-16.7-3.86-3.84-2.56-5.78-8.34-5.78-17.34v-211.24h64.86Z"/></svg>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="motion-badge">Dualism contrast</div>
+    <div class="card-number">01</div>
+    <div class="card-inner">
+      <div>
+        <h2 class="card-headline">A question is not a workflow.<br><em>A workplace for humans. An engine for agents.</em></h2>
+        <p class="card-sub">Health scores surface risk. The renewal pipeline surfaces pressure. The playbook fires without prompting. They need to see it before they even thought to ask. That's not a chat function — that's an instrument.</p>
+        <div class="card-tags">
+          <span class="tag highlight">Core positioning</span>
+          <span class="tag">LinkedIn carousel</span>
+          <span class="tag">Dark / lit contrast</span>
+        </div>
+      </div>
+      <div class="card-visual">
+        <div class="visual-dualism">
+          <div class="dual-pane"><div class="dual-label">Chat interface</div><span class="cursor-blink"></span></div>
+          <div class="dual-pane lit">
+            <div class="dual-label">Planhat</div>
+            <div class="dash-dot"></div>
+            <div class="dashboard-lines">
+              <div class="dash-line" style="width:80%"></div>
+              <div class="dash-line" style="width:60%"></div>
+              <div class="dash-line" style="width:90%"></div>
+              <div class="dash-line" style="width:45%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="motion-badge">Agent log</div>
+    <div class="card-number">02</div>
+    <div class="card-inner">
+      <div>
+        <h2 class="card-headline">See what your<br><em>AI actually did.</em></h2>
+        <p class="card-sub">Every agent action logged, explained, attributed. Handover notes, issue creation, deletions — all visible. "Here's what it did. Here's why. Here's the time saved." Measurable outcomes, not vibes.</p>
+        <div class="card-tags">
+          <span class="tag highlight">Agent log</span>
+          <span class="tag">Single static</span>
+          <span class="tag">Enterprise ICP</span>
+        </div>
+      </div>
+      <div class="card-visual">
+        <div class="visual-log">
+          <div class="log-row"><span class="log-icon">↓</span><div><div class="log-action">Created issue — Chili Piper churn risk</div><div class="log-saved">Saved 4 min</div></div><span class="log-time">09:14</span></div>
+          <div class="log-row"><span class="log-icon">↓</span><div><div class="log-action">Pushed to Linear → ENG-2841</div><div class="log-saved">Saved 2 min</div></div><span class="log-time">09:14</span></div>
+          <div class="log-row"><span class="log-icon">↓</span><div><div class="log-action">Handover notes generated — 3 accounts</div><div class="log-saved">Saved 18 min</div></div><span class="log-time">09:32</span></div>
+          <div class="log-row"><span class="log-icon">↓</span><div><div class="log-action">Deleted 100 duplicate companies</div><div class="log-saved">Saved 30 min</div></div><span class="log-time">10:01</span></div>
+          <div class="log-row total"><span class="log-icon">✦</span><div><div class="log-action">Total time saved today</div><div class="log-saved">54 min</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="motion-badge">Flood vs precision</div>
+    <div class="card-number">03</div>
+    <div class="card-inner">
+      <div>
+        <h2 class="card-headline">Guardrails, not<br><em>a black box.</em></h2>
+        <p class="card-sub">Connect 20 tools, feed a million tokens, watch the agent ignore your instructions. Planhat trims payloads, applies if-then guardrails, and filters responses to exactly what matters. You're in control. Claude isn't.</p>
+        <div class="card-tags">
+          <span class="tag highlight">Context control</span>
+          <span class="tag">Explainer motion</span>
+          <span class="tag">MCP / infra ICP</span>
+        </div>
+      </div>
+      <div class="card-visual">
+        <div class="visual-flood">
+          <div class="flood-pane"><div class="flood-label">Unguarded LLM</div><div class="token-cloud"></div></div>
+          <div class="flood-pane">
+            <div class="flood-label good">Planhat</div>
+            <div class="precision-lines">
+              <div class="p-line"><div class="p-dot"></div><div class="p-bar" data-w="70%"></div></div>
+              <div class="p-line"><div class="p-dot"></div><div class="p-bar" data-w="55%"></div></div>
+              <div class="p-line"><div class="p-dot"></div><div class="p-bar" data-w="80%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="motion-badge">Architecture reveal</div>
+    <div class="card-number">04</div>
+    <div class="card-inner">
+      <div>
+        <h2 class="card-headline">You can't rely on<br><em>one model.</em></h2>
+        <p class="card-sub">Just like you can't rely on AWS alone for hosting. Four pillars: model agnostic, agent engine with guardrails, MCP server, object-oriented data storage. Infrastructure built for production — not prototypes.</p>
+        <div class="card-tags">
+          <span class="tag highlight">Infrastructure</span>
+          <span class="tag">Architecture diagram</span>
+          <span class="tag">Credibility play</span>
+        </div>
+      </div>
+      <div class="card-visual">
+        <div class="visual-arch">
+          <div class="arch-pillar"><span class="arch-n">01</span><span class="arch-name">Model agnostic</span><div class="arch-bar" data-w="88%"></div></div>
+          <div class="arch-pillar"><span class="arch-n">02</span><span class="arch-name">Agent engine</span><div class="arch-bar" data-w="72%"></div></div>
+          <div class="arch-pillar"><span class="arch-n">03</span><span class="arch-name">MCP server</span><div class="arch-bar" data-w="60%"></div></div>
+          <div class="arch-pillar"><span class="arch-n">04</span><span class="arch-name">Object-oriented storage</span><div class="arch-bar" data-w="82%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <p>Planhat — Social Concepts 2026</p>
+    <p>4 posts / series</p>
+  </footer>
+
+  <script type="module">
+    import { animate, scroll, stagger } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm";
+
+    const ease = [0.25, 0, 0, 1];
+    const dur = { fast: 0.2, base: 0.4, slow: 0.7 };
+
+    document.getElementById('modeToggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('light');
+      animate(document.body, { opacity: [0.88, 1] }, { duration: dur.base, easing: ease });
+    });
+
+    animate('.page-header', { opacity: [0, 1], y: [8, 0] }, { duration: dur.slow, easing: ease });
+    animate(document.querySelectorAll('.card'), { opacity: [0, 1], y: [8, 0] }, { duration: dur.slow, easing: ease, delay: stagger(0.08) });
+    scroll(animate('.page-footer', { opacity: [0, 1], y: [8, 0] }, { duration: dur.slow, easing: ease }), { offset: ["start 0.9", "start 0.4"] });
+
+    animate(document.querySelectorAll('.dash-line'), { scaleX: [0, 1], opacity: [0, 0.5] }, { duration: dur.slow, easing: ease, delay: stagger(0.1, { startDelay: 0.6 }) });
+    animate(document.querySelectorAll('.log-row'), { opacity: [0, 1], y: [4, 0] }, { duration: dur.base, easing: ease, delay: stagger(0.15, { startDelay: 0.7 }) });
+
+    const tc = document.querySelector('.token-cloud');
+    ['ctx','msg','tool','call','res','err','llm','tok','mcp','fn','evt','api','req','sys','usr','agt','mem','obj','vec','emb','idx','doc','ref','out'].forEach(t => {
+      const s = document.createElement('span'); s.className = 'token'; s.textContent = t; tc.appendChild(s);
+    });
+    animate(document.querySelectorAll('.token'), { opacity: [0, 1] }, { duration: dur.base, easing: ease, delay: stagger(0.04, { startDelay: 0.6 }) });
+    animate(document.querySelectorAll('.p-line'), { opacity: [0, 1] }, { duration: dur.base, easing: ease, delay: stagger(0.12, { startDelay: 0.7 }) });
+    document.querySelectorAll('.p-bar').forEach((bar, i) => animate(bar, { width: [0, bar.dataset.w] }, { duration: dur.slow, easing: ease, delay: 0.7 + i * 0.12 }));
+
+    animate(document.querySelectorAll('.arch-pillar'), { opacity: [0, 1], x: [6, 0] }, { duration: dur.base, easing: ease, delay: stagger(0.1, { startDelay: 0.5 }) });
+    document.querySelectorAll('.arch-bar').forEach((bar, i) => animate(bar, { width: [0, bar.dataset.w] }, { duration: dur.slow, easing: ease, delay: 0.6 + i * 0.08 }));
+
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('mouseenter', () => animate(card, { borderColor: 'var(--color-border)' }, { duration: dur.fast, easing: ease }));
+      card.addEventListener('mouseleave', () => animate(card, { borderColor: 'var(--color-surface)' }, { duration: dur.fast, easing: ease }));
+    });
+  </script>
+</body>
+</html>
