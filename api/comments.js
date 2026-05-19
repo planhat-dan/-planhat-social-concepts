@@ -118,7 +118,7 @@ function fetchErrorDetail(err) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -183,6 +183,23 @@ module.exports = async function handler(req, res) {
         return sendError(res, 500, error.message, { stage: 'update', supabase: error });
       }
       return res.status(200).json(data);
+    }
+
+    if (req.method === 'DELETE') {
+      // accept id in query string or JSON body
+      const urlObj = new URL(req.url, 'http://x');
+      let id = urlObj.searchParams.get('id');
+      if (!id) {
+        const body = await readJsonBody(req);
+        id = body && body.id;
+      }
+      if (!id) return sendError(res, 400, 'Missing id');
+      const { error } = await sb.from('comments').delete().eq('id', id);
+      if (error) {
+        console.error('[api/comments] DELETE supabase error:', error);
+        return sendError(res, 500, error.message, { stage: 'delete', supabase: error });
+      }
+      return res.status(200).json({ id, deleted: true });
     }
 
     return sendError(res, 405, 'Method not allowed');

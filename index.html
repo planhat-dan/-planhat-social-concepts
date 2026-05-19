@@ -632,6 +632,13 @@
     }
     .review-popover .rp-btn.resolve { background: #4CAF50; }
     .review-popover .rp-btn.resolve.is-resolved { background: #7A7A7E; }
+    .review-popover .rp-btn.danger {
+      background: transparent;
+      color: #B33;
+      border: 1px solid #E8C0C0;
+      margin-right: auto;
+    }
+    .review-popover .rp-btn.danger:hover { background: #FCEEEE; }
     .review-popover .rp-comment {
       padding: 8px 0;
       border-bottom: 1px solid #E8E8EB;
@@ -719,6 +726,16 @@
         body: JSON.stringify({ id, ...patch })
       });
       if (!r.ok) throw new Error('PATCH failed: ' + r.status);
+      return r.json();
+    }
+
+    async function deleteComment(id) {
+      const r = await fetch(API + '?id=' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!r.ok) {
+        let msg = 'DELETE failed: ' + r.status;
+        try { const j = await r.json(); if (j.error) msg = j.error; } catch {}
+        throw new Error(msg);
+      }
       return r.json();
     }
 
@@ -864,6 +881,7 @@
           <div class="rp-text">${escapeHtml(comment.text)}</div>
         </div>
         <div class="rp-actions">
+          <button class="rp-btn danger" data-action="delete" title="Delete comment">Delete</button>
           <button class="rp-btn resolve ${comment.resolved ? 'is-resolved' : ''}" data-action="toggle">
             ${comment.resolved ? 'Reopen' : 'Resolve'}
           </button>
@@ -875,6 +893,20 @@
       pop.querySelector('[data-action=close]').addEventListener('click', () => {
         state.openId = null;
         render();
+      });
+      pop.querySelector('[data-action=delete]').addEventListener('click', async (e) => {
+        if (!confirm('Delete this comment?')) return;
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+          await deleteComment(comment.id);
+          state.comments = state.comments.filter(c => c.id !== comment.id);
+          state.openId = null;
+          render();
+        } catch (err) {
+          btn.disabled = false;
+          alert('Failed to delete: ' + err.message);
+        }
       });
       pop.querySelector('[data-action=toggle]').addEventListener('click', async (e) => {
         const btn = e.currentTarget;
