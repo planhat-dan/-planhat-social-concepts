@@ -480,5 +480,479 @@
       card.addEventListener('mouseleave', () => animate(card, { borderColor: 'var(--color-surface)' }, { duration: dur.fast, easing: ease }));
     });
   </script>
+
+  <!-- ============ REVIEW LAYER ============ -->
+  <style>
+    body { position: relative; }
+
+    #review-toolbar {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      z-index: 100001;
+      background: #0E1312;
+      color: #FCFCFD;
+      border: 1px solid #464649;
+      border-radius: 999px;
+      padding: 8px 8px 8px 16px;
+      font: 500 13px/1 'Inter', sans-serif;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      user-select: none;
+    }
+    #review-toolbar .rt-status { color: #B8B8BC; font-size: 12px; }
+    #review-toolbar .rt-btn {
+      background: #F36A35;
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font: 500 12px/1 'Inter', sans-serif;
+      letter-spacing: -0.01em;
+    }
+    #review-toolbar .rt-btn.off { background: #464649; }
+    #review-toolbar .rt-toggle {
+      background: transparent;
+      color: #B8B8BC;
+      border: none;
+      padding: 6px 10px;
+      font: 500 12px/1 'Inter', sans-serif;
+      cursor: pointer;
+    }
+
+    body.review-on { cursor: crosshair; }
+    body.review-on .review-pin { cursor: pointer; }
+
+    .review-pin {
+      position: absolute;
+      width: 28px; height: 28px;
+      margin: -28px 0 0 -14px;
+      z-index: 99999;
+      pointer-events: auto;
+      transform-origin: bottom center;
+      animation: pinDrop 240ms cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes pinDrop {
+      0% { transform: translateY(-8px) scale(0.6); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .review-pin .pin-shape {
+      width: 28px; height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      background: #F36A35;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+    }
+    .review-pin .pin-num {
+      transform: rotate(45deg);
+      color: #fff;
+      font: 600 11px/1 'Inter', sans-serif;
+    }
+    .review-pin.resolved .pin-shape { background: #4CAF50; }
+    .review-pin.draft .pin-shape { background: #F36A35; opacity: 0.85; }
+    .review-pin:hover .pin-shape { transform: rotate(-45deg) scale(1.1); }
+
+    .review-popover {
+      position: absolute;
+      z-index: 100000;
+      width: 300px;
+      background: #FCFCFD;
+      color: #0E1312;
+      border: 1px solid #CFCFD3;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+      font: 13px/1.5 'Inter', sans-serif;
+    }
+    .review-popover .rp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #E8E8EB;
+    }
+    .review-popover .rp-title {
+      font: 600 13px/1 'Inter', sans-serif;
+      color: #0E1312;
+    }
+    .review-popover .rp-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #7A7A7E;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 6px;
+    }
+    .review-popover input,
+    .review-popover textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #CFCFD3;
+      border-radius: 6px;
+      font: 13px/1.4 'Inter', sans-serif;
+      color: #0E1312;
+      background: #fff;
+      margin-bottom: 8px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .review-popover input:focus,
+    .review-popover textarea:focus {
+      outline: none;
+      border-color: #F36A35;
+    }
+    .review-popover textarea { min-height: 64px; }
+    .review-popover .rp-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .review-popover .rp-btn {
+      background: #F36A35;
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font: 500 12px/1 'Inter', sans-serif;
+    }
+    .review-popover .rp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .review-popover .rp-btn.secondary {
+      background: transparent;
+      color: #5C5C60;
+      border: 1px solid #CFCFD3;
+    }
+    .review-popover .rp-btn.resolve { background: #4CAF50; }
+    .review-popover .rp-btn.resolve.is-resolved { background: #7A7A7E; }
+    .review-popover .rp-comment {
+      padding: 8px 0;
+      border-bottom: 1px solid #E8E8EB;
+    }
+    .review-popover .rp-comment:last-of-type { border-bottom: none; }
+    .review-popover .rp-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #7A7A7E;
+      margin-bottom: 4px;
+    }
+    .review-popover .rp-author { font-weight: 600; color: #0E1312; }
+    .review-popover .rp-text { color: #2E2E31; white-space: pre-wrap; }
+  </style>
+
+  <div id="review-toolbar">
+    <span class="rt-status" id="rt-status">0 comments</span>
+    <button class="rt-toggle" id="rt-toggle" title="Hide pins">Hide</button>
+    <button class="rt-btn" id="rt-mode">Comment</button>
+  </div>
+
+  <script>
+  (function () {
+    const API = '/api/comments';
+    const state = {
+      comments: [],
+      mode: false,
+      visible: true,
+      draft: null,
+      openId: null
+    };
+
+    const $toolbar = document.getElementById('review-toolbar');
+    const $status  = document.getElementById('rt-status');
+    const $mode    = document.getElementById('rt-mode');
+    const $toggle  = document.getElementById('rt-toggle');
+
+    function docSize() {
+      return {
+        w: Math.max(document.documentElement.scrollWidth, window.innerWidth),
+        h: Math.max(document.documentElement.scrollHeight, window.innerHeight)
+      };
+    }
+
+    function fmtDate(iso) {
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString(undefined, {
+          month: 'short', day: 'numeric',
+          hour: 'numeric', minute: '2-digit'
+        });
+      } catch { return ''; }
+    }
+
+    function getAuthor() { return localStorage.getItem('review_author') || ''; }
+    function setAuthor(n) { localStorage.setItem('review_author', n); }
+
+    async function fetchComments() {
+      try {
+        const r = await fetch(API);
+        if (!r.ok) throw new Error('GET failed');
+        const data = await r.json();
+        state.comments = Array.isArray(data) ? data : (data.comments || []);
+        render();
+      } catch (e) {
+        console.warn('[review] fetch error', e);
+      }
+    }
+
+    async function postComment(payload) {
+      const r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) throw new Error('POST failed: ' + r.status);
+      return r.json();
+    }
+
+    async function patchComment(id, patch) {
+      const r = await fetch(API, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...patch })
+      });
+      if (!r.ok) throw new Error('PATCH failed: ' + r.status);
+      return r.json();
+    }
+
+    function render() {
+      document.querySelectorAll('.review-pin, .review-popover').forEach(n => n.remove());
+
+      const open = state.comments.filter(c => !c.resolved).length;
+      const resolved = state.comments.length - open;
+      $status.textContent = `${open} open · ${resolved} resolved`;
+      $mode.textContent = state.mode ? 'Cancel' : 'Comment';
+      $mode.classList.toggle('off', state.mode);
+      document.body.classList.toggle('review-on', state.mode);
+      $toggle.textContent = state.visible ? 'Hide' : 'Show';
+
+      if (!state.visible) return;
+
+      const { w, h } = docSize();
+      state.comments.forEach((c, i) => {
+        const pin = document.createElement('div');
+        pin.className = 'review-pin' + (c.resolved ? ' resolved' : '');
+        pin.style.left = (c.x * w / 100) + 'px';
+        pin.style.top  = (c.y * h / 100) + 'px';
+        pin.innerHTML = `<div class="pin-shape"><span class="pin-num">${i + 1}</span></div>`;
+        pin.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openThread(c, i + 1);
+        });
+        document.body.appendChild(pin);
+      });
+
+      if (state.draft) {
+        const pin = document.createElement('div');
+        pin.className = 'review-pin draft';
+        pin.style.left = (state.draft.x * w / 100) + 'px';
+        pin.style.top  = (state.draft.y * h / 100) + 'px';
+        pin.innerHTML = `<div class="pin-shape"><span class="pin-num">+</span></div>`;
+        document.body.appendChild(pin);
+        openDraft();
+      } else if (state.openId) {
+        const idx = state.comments.findIndex(x => x.id === state.openId);
+        const c = state.comments[idx];
+        if (c) openThread(c, idx + 1);
+      }
+    }
+
+    function popoverPosition(xPct, yPct) {
+      const { w, h } = docSize();
+      const px = xPct * w / 100;
+      const py = yPct * h / 100;
+      const popW = 300;
+      const popH = 200;
+      let left = px + 18;
+      let top  = py + 8;
+      if (left + popW > w - 12) left = px - popW - 18;
+      if (top + popH > h - 12)   top  = py - popH - 8;
+      if (left < 12) left = 12;
+      if (top  < 12) top  = 12;
+      return { left, top };
+    }
+
+    function openDraft() {
+      document.querySelectorAll('.review-popover').forEach(n => n.remove());
+      const { x, y } = state.draft;
+      const { left, top } = popoverPosition(x, y);
+      const pop = document.createElement('div');
+      pop.className = 'review-popover';
+      pop.style.left = left + 'px';
+      pop.style.top  = top + 'px';
+      pop.innerHTML = `
+        <div class="rp-header">
+          <div class="rp-title">New comment</div>
+          <button class="rp-close" data-action="cancel">×</button>
+        </div>
+        <input type="text" name="author" placeholder="Your name" value="${escapeAttr(getAuthor())}" />
+        <textarea name="text" placeholder="Leave a comment…"></textarea>
+        <div class="rp-actions">
+          <button class="rp-btn secondary" data-action="cancel">Cancel</button>
+          <button class="rp-btn" data-action="submit">Comment</button>
+        </div>
+      `;
+      pop.addEventListener('click', (e) => e.stopPropagation());
+      document.body.appendChild(pop);
+
+      const $author = pop.querySelector('[name=author]');
+      const $text   = pop.querySelector('[name=text]');
+      (getAuthor() ? $text : $author).focus();
+
+      pop.querySelectorAll('[data-action=cancel]').forEach(b => {
+        b.addEventListener('click', () => {
+          state.draft = null;
+          render();
+        });
+      });
+      pop.querySelector('[data-action=submit]').addEventListener('click', async () => {
+        const author = $author.value.trim();
+        const text   = $text.value.trim();
+        if (!author || !text) return;
+        setAuthor(author);
+        const btn = pop.querySelector('[data-action=submit]');
+        btn.disabled = true;
+        try {
+          const created = await postComment({
+            x: state.draft.x, y: state.draft.y, author, text
+          });
+          state.draft = null;
+          if (created && created.id) {
+            state.comments.push(created);
+            render();
+          } else {
+            await fetchComments();
+          }
+        } catch (e) {
+          btn.disabled = false;
+          alert('Failed to save comment: ' + e.message);
+        }
+      });
+
+      $text.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          pop.querySelector('[data-action=submit]').click();
+        }
+      });
+    }
+
+    function openThread(comment, number) {
+      state.openId = comment.id;
+      document.querySelectorAll('.review-popover').forEach(n => n.remove());
+      const { left, top } = popoverPosition(comment.x, comment.y);
+      const pop = document.createElement('div');
+      pop.className = 'review-popover';
+      pop.style.left = left + 'px';
+      pop.style.top  = top + 'px';
+      pop.innerHTML = `
+        <div class="rp-header">
+          <div class="rp-title">#${number} · ${comment.resolved ? 'Resolved' : 'Open'}</div>
+          <button class="rp-close" data-action="close">×</button>
+        </div>
+        <div class="rp-comment">
+          <div class="rp-meta">
+            <span class="rp-author">${escapeHtml(comment.author)}</span>
+            <span>${fmtDate(comment.created_at || comment.timestamp)}</span>
+          </div>
+          <div class="rp-text">${escapeHtml(comment.text)}</div>
+        </div>
+        <div class="rp-actions">
+          <button class="rp-btn resolve ${comment.resolved ? 'is-resolved' : ''}" data-action="toggle">
+            ${comment.resolved ? 'Reopen' : 'Resolve'}
+          </button>
+        </div>
+      `;
+      pop.addEventListener('click', (e) => e.stopPropagation());
+      document.body.appendChild(pop);
+
+      pop.querySelector('[data-action=close]').addEventListener('click', () => {
+        state.openId = null;
+        render();
+      });
+      pop.querySelector('[data-action=toggle]').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+          const updated = await patchComment(comment.id, { resolved: !comment.resolved });
+          const idx = state.comments.findIndex(c => c.id === comment.id);
+          if (idx >= 0) state.comments[idx] = { ...state.comments[idx], ...updated };
+          render();
+        } catch (err) {
+          btn.disabled = false;
+          alert('Failed to update: ' + err.message);
+        }
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, ch => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[ch]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    $mode.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.mode = !state.mode;
+      state.draft = null;
+      state.openId = null;
+      render();
+    });
+    $toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.visible = !state.visible;
+      render();
+    });
+    $toolbar.addEventListener('click', (e) => e.stopPropagation());
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#review-toolbar')) return;
+      if (e.target.closest('.review-pin')) return;
+      if (e.target.closest('.review-popover')) return;
+
+      if (!state.mode) {
+        if (state.openId) {
+          state.openId = null;
+          render();
+        }
+        return;
+      }
+
+      const { w, h } = docSize();
+      const xPct = (e.pageX / w) * 100;
+      const yPct = (e.pageY / h) * 100;
+      state.draft = { x: xPct, y: yPct };
+      state.openId = null;
+      render();
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (state.draft || state.openId || state.mode) {
+          state.draft = null;
+          state.openId = null;
+          state.mode = false;
+          render();
+        }
+      }
+    });
+
+    let rt;
+    window.addEventListener('resize', () => {
+      clearTimeout(rt);
+      rt = setTimeout(render, 100);
+    });
+
+    fetchComments();
+    setInterval(fetchComments, 8000);
+  })();
+  </script>
 </body>
 </html>
