@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/api/comments", "destination": "/api/comments" }
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
