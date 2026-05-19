@@ -833,12 +833,12 @@
     function attachPinPointer(pin, comment, number) {
       pin.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
-        e.stopPropagation();
+        e.preventDefault();           // suppress browser pointer fallback (mouse selection, image drag)
+        e.stopPropagation();          // don't reach the document drop-pin handler
         const startX = e.clientX, startY = e.clientY;
         const startLeft = parseFloat(pin.style.left) || 0;
         const startTop  = parseFloat(pin.style.top)  || 0;
         let dragging = false;
-        try { pin.setPointerCapture(e.pointerId); } catch {}
 
         const onMove = (ev) => {
           const dx = ev.clientX - startX;
@@ -846,31 +846,40 @@
           if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD && state.mode) {
             dragging = true;
             pin.classList.add('dragging');
-            // close any open popover during drag
             if (state.openId === comment.id) {
               document.querySelectorAll('.review-popover').forEach(n => n.remove());
             }
           }
           if (dragging) {
+            ev.preventDefault();
             pin.style.left = (startLeft + dx) + 'px';
             pin.style.top  = (startTop  + dy) + 'px';
           }
         };
 
-        const onUp = async (ev) => {
-          pin.removeEventListener('pointermove', onMove);
-          pin.removeEventListener('pointerup', onUp);
-          pin.removeEventListener('pointercancel', onUp);
+        const cleanup = () => {
+          window.removeEventListener('pointermove', onMove, true);
+          window.removeEventListener('pointerup', onUp, true);
+          window.removeEventListener('pointercancel', onUp, true);
           pin.classList.remove('dragging');
-          try { pin.releasePointerCapture(e.pointerId); } catch {}
+        };
 
+        const onUp = async (ev) => {
+          cleanup();
           if (dragging) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            // suppress the synthetic click that may follow pointerup, so the
+            // page's document.click handler doesn't drop a new pin under the cursor.
+            const swallowClick = (ce) => { ce.stopPropagation(); ce.preventDefault(); };
+            window.addEventListener('click', swallowClick, { capture: true, once: true });
+            setTimeout(() => window.removeEventListener('click', swallowClick, true), 0);
+
             const { w, h } = docSize();
             const newLeft = parseFloat(pin.style.left);
             const newTop  = parseFloat(pin.style.top);
             const xPct = Math.max(0, Math.min(100, (newLeft / w) * 100));
             const yPct = Math.max(0, Math.min(100, (newTop  / h) * 100));
-            // optimistic update
             const idx = state.comments.findIndex(c => c.id === comment.id);
             if (idx >= 0) state.comments[idx] = { ...state.comments[idx], x: xPct, y: yPct };
             try {
@@ -881,14 +890,14 @@
               await fetchComments();
             }
           } else {
-            // treat as click → open thread
             openThread(comment, number);
           }
         };
 
-        pin.addEventListener('pointermove', onMove);
-        pin.addEventListener('pointerup', onUp);
-        pin.addEventListener('pointercancel', onUp);
+        // attach to window so the drag continues even when the cursor leaves the pin
+        window.addEventListener('pointermove', onMove, true);
+        window.addEventListener('pointerup', onUp, true);
+        window.addEventListener('pointercancel', onUp, true);
       });
     }
 
