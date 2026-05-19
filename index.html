@@ -652,8 +652,8 @@
       justify-content: flex-end;
       margin-bottom: 8px;
     }
+    .review-pin { cursor: grab; }
     .review-pin.dragging { cursor: grabbing; opacity: 0.85; }
-    body.review-on .review-pin { cursor: grab; }
     .review-popover .rp-comment {
       padding: 8px 0;
       border-bottom: 1px solid #E8E8EB;
@@ -843,7 +843,7 @@
         const onMove = (ev) => {
           const dx = ev.clientX - startX;
           const dy = ev.clientY - startY;
-          if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD && state.mode) {
+          if (!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
             dragging = true;
             pin.classList.add('dragging');
             if (state.openId === comment.id) {
